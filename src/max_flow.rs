@@ -27,12 +27,14 @@ struct Vertex {
     pub label: u64,
     pub in_edges: Vec<usize>,
     pub out_edges: Vec<usize>,
+    pub component: Option<usize>,
 }
 
 #[derive(Debug, Clone)]
 struct Graph {
     pub vertices: Vec<Vertex>,
     pub edges: Vec<Edge>,
+    pub connected_components_count: usize,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -46,6 +48,7 @@ impl Graph {
         Graph {
             vertices: Vec::new(),
             edges: Vec::new(),
+            connected_components_count: 0,
         }
     }
 
@@ -56,12 +59,14 @@ impl Graph {
                 label: i as u64,
                 in_edges: Vec::new(),
                 out_edges: Vec::new(),
+                component: None,
             };
             vertices.push(v);
         }
         Graph {
             vertices: vertices,
             edges: Vec::new(),
+            connected_components_count: 0,
         }
     }
 
@@ -102,6 +107,7 @@ impl Graph {
             label: l,
             in_edges: vec![],
             out_edges: vec![],
+            component: None,
         });
         self.vertices.len() - 1
     }
@@ -226,6 +232,47 @@ impl Graph {
         res
     }
 
+    fn compute_connected_components(&mut self, source: usize, sink: usize) {
+        if source >= self.vertices.len() {
+            panic!("Invalid source");
+        }
+        if sink >= self.vertices.len() {
+            panic!("Invalid sink");
+        }
+        self.vertices[source].component = Some(usize::MAX);
+        self.vertices[sink].component = Some(usize::MAX);
+
+        let mut component_index = 0;
+
+        for v_index in 0..self.vertices.len() {
+            if self.vertices[v_index].component.is_some() {
+                continue;
+            }
+            // no component
+            let mut queue = VecDeque::<usize>::with_capacity(self.vertices.len());
+            queue.push_front(v_index);
+
+            while let Some(vi) = queue.pop_front() {
+                if self.vertices[vi].component.is_some() {
+                    continue;
+                }
+                self.vertices[vi].component = Some(component_index);
+
+                let out_edges_index = &(self.vertices[vi].out_edges);
+
+                for e in out_edges_index {
+                    let dest = self.edges[*e].end;
+                    if self.vertices[dest].component.is_none() {
+                        queue.push_front(dest)
+                    }
+                }
+            }
+            component_index += 1;
+        }
+        self.connected_components_count = component_index;
+        // println!("Number of connected components: {}", component_index);
+    }
+
     // Takes a source and a sink and finds a path from the source to the sink.
     // The path is (optionally) returned as the list of edges leading from the
     // source to the sink, together with the capacity of the path
@@ -343,6 +390,7 @@ impl Graph {
     ) -> Graph {
         let mut res_graph = Graph::new_residual_graph(self);
 
+        res_graph.compute_connected_components(source, sink);
         // let mut max_flow = 0;
         let n_original_edges = self.edges.len();
         loop {
@@ -484,6 +532,7 @@ pub struct MaxFlowExperimentResult {
     pub max_load: usize,
     pub load_modes: Vec<usize>,
     pub stash_size: usize,
+    pub connected_components: usize,
     pub timings: FlowAllocTimings,
 }
 
@@ -544,6 +593,7 @@ fn generate_alloc_graph(params: MaxFlowAllocExperimentParams) -> (Graph, u64) {
 fn flow_alloc(
     params: MaxFlowAllocExperimentParams,
     timings: Option<&mut FlowAllocTimings>,
+    connected_components_count: Option<&mut usize>,
 ) -> Vec<usize> {
     let mut times: FlowAllocTimings = Default::default();
     let start_gen = std::time::Instant::now();
@@ -607,6 +657,9 @@ fn flow_alloc(
         *timings = times;
     }
 
+    if let Some(components_count) = connected_components_count {
+        *components_count = rff.connected_components_count;
+    }
     // Now, we can easily compute the load of each bucket.
     // We must be careful to remove the edges whose end are the sink or the
     // source from the load computation
@@ -628,7 +681,8 @@ fn flow_alloc(
 
 pub fn run_experiment(params: MaxFlowAllocExperimentParams) -> MaxFlowExperimentResult {
     let mut timings: FlowAllocTimings = Default::default();
-    let rand_alloc = flow_alloc(params, Some(&mut timings));
+    let mut connected_components: usize = 0;
+    let rand_alloc = flow_alloc(params, Some(&mut timings), Some(&mut connected_components));
     let size = rand_alloc.iter().sum();
     let max_load = rand_alloc.iter().fold(0, |max, x| max.max(*x));
     let load_modes = compute_modes(rand_alloc.into_iter(), max_load);
@@ -639,6 +693,7 @@ pub fn run_experiment(params: MaxFlowAllocExperimentParams) -> MaxFlowExperiment
         max_load,
         load_modes,
         stash_size,
+        connected_components,
         timings,
     }
 }

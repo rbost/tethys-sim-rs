@@ -63,6 +63,7 @@ pub struct MaxFlowAllocStats {
     pub stash_size: crate::utils::Stats,
     pub load_modes: Vec<crate::utils::ModeStats>,
     pub stash_modes: Vec<usize>,
+    pub connected_components: crate::utils::Stats,
     pub timings: MaxFlowAllocTimingStats,
 }
 
@@ -149,6 +150,7 @@ fn run_experiments_stats(
                     results.iter().map(|x| x.stash_size),
                     stash_stat.max.try_into().unwrap(),
                 ),
+                connected_components: compute_stats(results.iter().map(|x| x.connected_components)),
                 timings: MaxFlowAllocTimingStats {
                     generation: compute_stats_u128(results.iter().map(|x| x.timings.generation)),
                     sink_source: compute_stats_u128(results.iter().map(|x| x.timings.sink_source)),
