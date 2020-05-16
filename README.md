@@ -35,7 +35,7 @@ The configuration file is a list of the following key-value pairs:
 }
 ```
 where `n` is the number of elements to insert, `m` the number of buckets, `list_max_len` the maximum list length, `bucket_capacity` is the maximum number of entries per bucket, `generation_method` is the way the data set is generated (for now, only the `"WorstCaseGeneration"`, `"RandomGeneration"` algorithms are supported), `edge_orientation` parametrizes the way edges are oriented (choose between `"RandomOrientation"` and `"LeastChargedOrientation"`), `location_generation` changes the way the hash functions behave (`"FullyRandom"` picks two locations fully at random, and `"HalfRandom"` picks one location in each half of the allocation array) and `iterations` is the number of experiments to run with these parameters.
-The file [`max_flow_config.json`](rust/max_flow_config.json
+The file [`max_flow_config.json`](max_flow_config.json
 ) gives an example of such configuration file.
 
 
