@@ -530,7 +530,7 @@ pub struct FlowAllocTimings {
 pub struct MaxFlowExperimentResult {
     pub size: usize,
     pub max_load: usize,
-    pub load_modes: Vec<usize>,
+    // pub load_modes: Vec<usize>,
     pub stash_size: usize,
     pub connected_components: usize,
     pub timings: FlowAllocTimings,
@@ -691,7 +691,7 @@ pub fn run_experiment(params: MaxFlowAllocExperimentParams) -> MaxFlowExperiment
     MaxFlowExperimentResult {
         size,
         max_load,
-        load_modes,
+        // load_modes,
         stash_size,
         connected_components,
         timings,
