@@ -383,30 +383,27 @@ impl Graph {
     }
 
     fn compute_residual_max_flow(
-        &self,
+        &mut self,
         source: usize,
         sink: usize,
         traversal_alg: TraversalAlgorithm,
-    ) -> Graph {
-        let mut res_graph = Graph::new_residual_graph(self);
-
-        res_graph.compute_connected_components(source, sink);
+    ) {
         // let mut max_flow = 0;
-        let n_original_edges = self.edges.len();
+        let n_original_edges = self.edges.len() / 2;
         loop {
-            match res_graph.find_path(source, sink, traversal_alg) {
+            match self.find_path(source, sink, traversal_alg) {
                 None => break,
                 Some((path, path_flow)) => {
                     for e in path {
                         // update capacities
-                        res_graph.edges[e].capacity -= path_flow;
+                        self.edges[e].capacity -= path_flow;
                         // get the reversed edge
                         let rev_edge = if e < n_original_edges {
                             e + n_original_edges
                         } else {
                             e - n_original_edges
                         };
-                        res_graph.edges[rev_edge].capacity += path_flow;
+                        self.edges[rev_edge].capacity += path_flow;
                     }
                     // max_flow += path_flow;
                 }
@@ -414,8 +411,6 @@ impl Graph {
         }
 
         // println!("Max flow {}", max_flow);
-
-        res_graph
     }
 
     fn compute_max_flow(
@@ -424,7 +419,8 @@ impl Graph {
         sink: usize,
         traversal_alg: TraversalAlgorithm,
     ) -> Graph {
-        let mut g = self.compute_residual_max_flow(source, sink, traversal_alg);
+        let mut g = Graph::new_residual_graph(self);
+        g.compute_residual_max_flow(source, sink, traversal_alg);
         g.transform_residual_to_flow();
         g
     }
@@ -632,6 +628,10 @@ fn flow_alloc(
     }
     // assert!(graph.check_graph_correctness());
 
+    let mut rff = Graph::new_residual_graph(&graph);
+
+    rff.compute_connected_components(params.m, params.m + 1);
+
     // It is time to max flow!
     // We could do
     // let ff = graph.compute_max_flow(params.m, params.m + 1, TraversalAlgorithm::DepthFirstSearch);
@@ -640,11 +640,7 @@ fn flow_alloc(
     // Ford-Fulkerson algorithm. So, we only compute this graph for now
     let start_ff = std::time::Instant::now();
 
-    let rff = graph.compute_residual_max_flow(
-        params.m,
-        params.m + 1,
-        TraversalAlgorithm::DepthFirstSearch,
-    );
+    rff.compute_residual_max_flow(params.m, params.m + 1, TraversalAlgorithm::DepthFirstSearch);
 
     let end_ff = std::time::Instant::now();
 
