@@ -6,8 +6,6 @@ This archive contains some of the code used for the evaluation of the algorithms
 
 You will need a functional rust installation. See the [Rust's documentation](<https://www.rust-lang.org/tools/install>) for details on how to install.
 
-Move to the `rust` directory (with `cd rust`) before running the next commands.
-
 To compile (in dev mode):
 ```
 cargo build
@@ -46,7 +44,7 @@ You will also find scripts which can process the experiments' JSON output and pl
 They essentially all have the same usage and options:
 * pass the path of the JSON file to process as the first input
 * `--logx`, `--logy`: use log scale.
-* `--label label` or `-l label`: use `label` as the `x` values. `label` can be `n`, `m`, `n/m` `epsilon`.
+* `--label label` or `-l label`: use `label` as the `x` values. `label` can be `n`, `m`, `n/m`, or `epsilon`.
 * `--normalize` or `-n`: divide the value of interest by `n`.
 
 ## `fio` configuration file
