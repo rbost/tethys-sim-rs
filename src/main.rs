@@ -53,6 +53,8 @@ pub struct InteratedMaxFlowAllocExperimentParams {
 pub struct MaxFlowAllocTimingStats {
     pub generation: crate::utils::Stats,
     pub sink_source: crate::utils::Stats,
+    pub residual: crate::utils::Stats,
+    pub connected_components: crate::utils::Stats,
     pub max_flow: crate::utils::Stats,
 }
 #[derive(Debug, Clone, Serialize)]
@@ -154,6 +156,11 @@ fn run_experiments_stats(
                 timings: MaxFlowAllocTimingStats {
                     generation: compute_stats_u128(results.iter().map(|x| x.timings.generation)),
                     sink_source: compute_stats_u128(results.iter().map(|x| x.timings.sink_source)),
+                    residual: compute_stats_u128(results.iter().map(|x| x.timings.residual)),
+                    connected_components: compute_stats_u128(
+                        results.iter().map(|x| x.timings.connected_components),
+                    ),
+
                     max_flow: compute_stats_u128(results.iter().map(|x| x.timings.max_flow)),
                 },
             }

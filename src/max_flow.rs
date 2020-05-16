@@ -519,6 +519,8 @@ pub struct MaxFlowAllocExperimentParams {
 pub struct FlowAllocTimings {
     pub generation: u128,
     pub sink_source: u128,
+    pub residual: u128,
+    pub connected_components: u128,
     pub max_flow: u128,
 }
 
@@ -628,7 +630,11 @@ fn flow_alloc(
     }
     // assert!(graph.check_graph_correctness());
 
+    let start_residual = std::time::Instant::now();
+
     let mut rff = Graph::new_residual_graph(&graph);
+
+    let start_connected_components = std::time::Instant::now();
 
     rff.compute_connected_components(params.m, params.m + 1);
 
@@ -645,7 +651,13 @@ fn flow_alloc(
     let end_ff = std::time::Instant::now();
 
     times.generation = start_sink_source.duration_since(start_gen).as_nanos();
-    times.sink_source = start_ff.duration_since(start_sink_source).as_nanos();
+    times.sink_source = start_residual.duration_since(start_sink_source).as_nanos();
+    times.residual = start_connected_components
+        .duration_since(start_residual)
+        .as_nanos();
+    times.connected_components = start_ff
+        .duration_since(start_connected_components)
+        .as_nanos();
     times.max_flow = end_ff.duration_since(start_ff).as_nanos();
     // assert!(rff.check_graph_correctness());
 
