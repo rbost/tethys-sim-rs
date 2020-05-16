@@ -1,0 +1,26 @@
+[
+  {
+    "exp_params": {
+      "n": 4096,
+      "m": 512,
+      "list_max_len": 32,
+      "bucket_capacity": 32,
+      "generation_method": "WorstCaseGeneration",
+      "edge_orientation": "RandomOrientation",
+      "location_generation": "FullyRandom"
+    },
+    "iterations": 100
+  },
+  {
+    "exp_params": {
+      "n": 4096,
+      "m": 128,
+      "list_max_len": 32,
+      "bucket_capacity": 32,
+      "generation_method": "RandomGeneration",
+      "edge_orientation": "LeastChargedOrientation",
+      "location_generation": "HalfRandom"
+    },
+    "iterations": 100
+  }
+]

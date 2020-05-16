@@ -1,0 +1,61 @@
+
+[global]
+name=fio-rand-read
+filename=fio-rand-read
+rw=randread
+direct=1
+numjobs=1
+time_based=1
+runtime=10
+size=32G
+iodepth=128
+randrepeat=0
+rw_sequencer=sequential
+group_reporting=1
+io_submit_mode=offload
+
+
+[max_throughput]
+stonewall
+rw=randread ; makes no difference with rw=read
+bs=1M
+numjobs=1
+ioengine=libaio
+direct=1
+
+[\\pipackn{512}]
+stonewall
+rw=randread
+bs=4k
+numjobs=1
+ioengine=libaio
+direct=1
+
+
+[\\pipackn{128}]
+stonewall
+rw=randread
+bs=1k
+numjobs=1
+ioengine=libaio
+direct=1
+
+[\\pipackn{64}]
+stonewall
+rw=randread
+bs=512
+numjobs=1
+ioengine=libaio ; use libaio instead of io_uring for increased portability and 
+; fairer comparison
+direct=1 ; necessary with libaio
+
+[\\pibas]
+stonewall
+rw=randread
+bs=24
+numjobs=16
+ioengine=sync ; for 24bytes block size, using parallel sync jobs is faster 
+; than using libaio (because of the read efficiency and the alignment 
+; requirements of libaio)
+direct=0 ; would require at least 512 bytes alignment
+
