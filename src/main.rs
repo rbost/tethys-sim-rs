@@ -14,12 +14,13 @@ use rayon::prelude::*;
 use std::convert::TryInto;
 use std::fs::File;
 use std::io;
-use std::io::{BufReader, BufWriter};
+use std::io::BufReader;
 use std::path::Path;
 
 extern crate structopt;
 use structopt::StructOpt;
 
+mod dynamic_alloc;
 mod max_flow;
 
 #[derive(Debug, StructOpt)]
