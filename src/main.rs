@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 
+mod alloc_experiments_types;
 mod utils;
+
 pub use crate::utils::*;
 
 // use gnuplot::*;
@@ -20,7 +22,6 @@ use std::path::Path;
 extern crate structopt;
 use structopt::StructOpt;
 
-mod dynamic_alloc;
 mod max_flow;
 
 #[derive(Debug, StructOpt)]
@@ -102,7 +103,10 @@ fn run_experiments_stats(
     inputs: &[InteratedMaxFlowAllocExperimentParams],
 ) -> Vec<MaxFlowAllocStats> {
     let tot_iterations: usize = inputs.iter().map(|p| p.iterations).sum();
-    let tot_elements: usize = inputs.iter().map(|p| p.iterations * p.exp_params.n).sum();
+    let tot_elements: usize = inputs
+        .iter()
+        .map(|p| p.iterations * p.exp_params.alloc_params.n)
+        .sum();
 
     let iter_completed = std::sync::atomic::AtomicUsize::new(0);
 
