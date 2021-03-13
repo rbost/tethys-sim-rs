@@ -2,12 +2,14 @@
 
 // use std::collections::VecDeque;
 extern crate rand;
-// use rand::prelude::*;
+use rand::prelude::*;
 
 // use rayon::prelude::*;
 // use std::sync::atomic::{AtomicUsize, Ordering};
 
-use std::slice::Iter;
+use std::{slice::Iter, u64};
+
+use std::vec::Vec;
 
 // use indicatif::{ProgressBar, ProgressStyle};
 // use serde::{Deserialize, Serialize};
@@ -23,6 +25,11 @@ struct Edge {
                       // pub capacity: i64,
 }
 
+impl Edge {
+    fn capacity(&self) -> i64 {
+        1i64
+    }
+}
 #[derive(Debug, Clone)]
 struct Vertex {
     pub label: u64,
@@ -78,7 +85,72 @@ impl Graph {
         self.vertices.len() - 1
     }
 
-    fn push_edge(&mut self, edge_index: usize) {}
+    fn push_edge(&mut self, edge_index: usize) {
+        self.push_edge_cuckoo(edge_index, 0);
+    }
+
+    fn push_edge_cuckoo(&mut self, edge_index: usize, iteration_depth: usize) {
+        let edge = &self.edges[edge_index];
+        let cap_start = self.out_edge_capacity(edge.start);
+
+        if cap_start > self.max_vertex_capacity as u64 {
+            // we need to reverse one outgoing edge of the starting vertex
+
+            let v = &self.vertices[edge.start];
+            // position of the edge to be reversed in the outgoing edges array
+            // pick that position randomly
+            let reversed_edge_loc_pos = rand::thread_rng().gen_range(0, v.out_edges.len());
+
+            let rev_edge_index = v.out_edges[reversed_edge_loc_pos];
+
+            // reverse the edge
+            self.reverse_edge(rev_edge_index);
+
+            // iterate the eviction
+            self.push_edge_cuckoo(rev_edge_index, iteration_depth + 1);
+        }
+    }
+
+    fn push_edge_min_cap(&mut self, edge_index: usize) {
+        let edge = &self.edges[edge_index];
+        let cap_start = self.out_edge_capacity(edge.start);
+        let cap_end = self.out_edge_capacity(edge.end);
+
+        // we want to choose the direction that minimizes the vertex load
+        if cap_end < (cap_start as i64 - edge.capacity()) as u64 {
+            // reverse the edge
+            self.reverse_edge(edge_index);
+        }
+    }
+
+    fn push_edge_min_cap_aux(&mut self, edge_index: usize, iteration_depth: usize) {
+        let edge = &self.edges[edge_index];
+        let cap_start = self.out_edge_capacity(edge.start);
+
+        if cap_start > self.max_vertex_capacity as u64 {
+            // we need to reverse one outgoing edge of the starting vertex
+
+            let v = &self.vertices[edge.start];
+            // position of the edge to be reversed in the outgoing edges array
+            // take the least charged vertex
+            let reversed_edge_loc_pos = v
+                .out_edges
+                .iter()
+                .map(|&e| self.out_edge_capacity(self.edges[e].start))
+                .enumerate()
+                .min_by(|(_, v1), (_, v2)| v1.cmp(v2))
+                .unwrap()
+                .0;
+
+            let rev_edge_index = v.out_edges[reversed_edge_loc_pos];
+
+            // reverse the edge
+            self.reverse_edge(rev_edge_index);
+
+            // iterate the eviction
+            self.push_edge_cuckoo(rev_edge_index, iteration_depth + 1);
+        }
+    }
 
     fn add_edge(
         &mut self,
@@ -123,6 +195,39 @@ impl Graph {
         self.push_edge(e_index);
     }
 
+    fn reverse_edge(&mut self, edge_index: usize) {
+        assert!(edge_index < self.edge_count());
+
+        let edge = &mut self.edges[edge_index];
+        let old_start = edge.start;
+        let old_end = edge.end;
+
+        edge.start = old_end;
+        edge.end = old_start;
+
+        // remove from the old starting vertex outgoing edges
+        let pos: usize = self.vertices[old_start]
+            .out_edges
+            .iter()
+            .position(|&x| x == edge_index)
+            .unwrap();
+
+        self.vertices[old_start].out_edges.swap_remove(pos);
+
+        // remove from the old ending vertex ingoing edges
+        let pos: usize = self.vertices[old_end]
+            .in_edges
+            .iter()
+            .position(|&x| x == edge_index)
+            .unwrap();
+
+        self.vertices[old_end].in_edges.swap_remove(pos);
+
+        // reinsert the edge
+        self.vertices[edge.start].out_edges.push(edge_index);
+        self.vertices[edge.end].in_edges.push(edge_index);
+    }
+
     fn vertex_count(&self) -> usize {
         self.vertices.len()
     }
@@ -140,9 +245,11 @@ impl Graph {
     fn in_edge_capacity(&self, vertex: usize) -> u64 {
         assert!(vertex < self.vertex_count());
 
-        self.vertices[vertex].in_edges.iter().map(|_| 1u64).sum()
-        // .map(|&e| self.edges[e].capacity)
-        // .sum::<i64>() as u64
+        self.vertices[vertex]
+            .in_edges
+            .iter()
+            .map(|&e| self.edges[e].capacity())
+            .sum::<i64>() as u64
     }
 
     fn out_edge_count(&self, vertex: usize) -> usize {
@@ -154,9 +261,11 @@ impl Graph {
     fn out_edge_capacity(&self, vertex: usize) -> u64 {
         assert!(vertex < self.vertex_count());
 
-        self.vertices[vertex].out_edges.iter().map(|_| 1u64).sum()
-        // .map(|&e| self.edges[e].capacity)
-        // .sum::<i64>() as u64
+        self.vertices[vertex]
+            .out_edges
+            .iter()
+            .map(|&e| self.edges[e].capacity())
+            .sum::<i64>() as u64
     }
 
     // fn out_edge_capacity_debug(&self, vertex: usize) -> u64 {
