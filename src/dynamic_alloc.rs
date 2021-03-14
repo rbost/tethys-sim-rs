@@ -4,16 +4,18 @@
 extern crate rand;
 use rand::prelude::*;
 
-// use rayon::prelude::*;
-// use std::sync::atomic::{AtomicUsize, Ordering};
+use rayon::prelude::*;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use std::{slice::Iter, u64};
 
 use std::vec::Vec;
 
-// use indicatif::{ProgressBar, ProgressStyle};
-// use serde::{Deserialize, Serialize};
+pub use crate::alloc_experiments_types::{AllocExperimentParams, ListGenerationMethod};
+use indicatif::{ProgressBar, ProgressStyle};
+use serde::{Deserialize, Serialize};
 
+pub use crate::alloc_experiments_types::*;
 pub use crate::utils::*;
 
 #[derive(Debug, Clone)]
@@ -152,12 +154,7 @@ impl Graph {
         }
     }
 
-    fn add_edge(
-        &mut self,
-        label: u64,
-        start: usize,
-        end: usize, // , cap: u64
-    ) {
+    fn add_edge(&mut self, label: u64, start: usize, end: usize, cap: u64) {
         if start >= self.vertices.len() {
             panic!("Invalid starting vertex");
         }
@@ -193,6 +190,10 @@ impl Graph {
 
         //
         self.push_edge(e_index);
+
+        if cap > 0 {
+            self.add_edge(label, start, end, cap - 1)
+        }
     }
 
     fn reverse_edge(&mut self, edge_index: usize) {
@@ -328,4 +329,192 @@ impl Graph {
         }
         res
     }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub enum EvictionStrategy {
+    Cuckoo,
+    LeastCharged,
+}
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub enum LocationGeneration {
+    FullyRandom,
+    HalfRandom,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct DynamicAllocExperimentParams {
+    #[serde(flatten)]
+    pub alloc_params: AllocExperimentParams,
+    pub location_generation: LocationGeneration,
+    pub eviction_strategy: EvictionStrategy,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DynamicExperimentResult {
+    pub size: usize,
+    pub max_load: usize,
+    // pub load_modes: Vec<usize>,
+    pub stash_size: usize,
+    // pub connected_components: usize,
+    // pub timings: FlowAllocTimings,
+}
+
+fn generate_location<T>(rng: &mut T, m: usize, loc_gen: LocationGeneration) -> (usize, usize)
+where
+    T: rand::Rng,
+{
+    match loc_gen {
+        LocationGeneration::FullyRandom => (rng.gen_range(0, m), rng.gen_range(0, m)),
+        LocationGeneration::HalfRandom => {
+            (rng.gen_range(0, m / 2), m / 2 + rng.gen_range(0, m - m / 2))
+        }
+    }
+}
+
+fn dynamic_alloc(
+    params: DynamicAllocExperimentParams,
+    // timings: Option<&mut FlowAllocTimings>,
+    // connected_components_count: Option<&mut usize>,
+) -> Vec<usize> {
+    // let mut times: FlowAllocTimings = Default::default();
+    // let start_gen = std::time::Instant::now();
+
+    let mut remaining_elements = params.alloc_params.n;
+
+    let mut rng = thread_rng();
+
+    // create a new graph with m vertices, each of capacity
+    let mut graph =
+        Graph::new_with_vertices(params.alloc_params.bucket_capacity, params.alloc_params.m);
+
+    let mut list_index: u64 = 0;
+
+    while remaining_elements != 0 {
+        let l: usize = match params.alloc_params.generation_method {
+            ListGenerationMethod::RandomGeneration => {
+                rng.gen_range(0, params.alloc_params.list_max_len.min(remaining_elements)) + 1
+            }
+            ListGenerationMethod::WorstCaseGeneration => {
+                params.alloc_params.list_max_len.min(remaining_elements)
+            }
+        };
+
+        let (h1, h2) =
+            generate_location(&mut rng, params.alloc_params.m, params.location_generation);
+
+        let start = h1;
+        let end = h2;
+
+        graph.add_edge(list_index, start, end, l as u64);
+
+        remaining_elements -= l;
+        list_index += 1;
+    }
+
+    // if let Some(timings) = timings {
+    //     *timings = times;
+    // }
+
+    // if let Some(components_count) = connected_components_count {
+    //     *components_count = rff.connected_components_count;
+    // }
+    // Now, we can easily compute the load of each bucket.
+    // We must be careful to remove the edges whose end are the sink or the
+    // source from the load computation
+    let res: Vec<usize> = (0..params.alloc_params.m)
+        .map(|v| {
+            graph.vertices[v]
+                .out_edges
+                .iter()
+                // .filter(
+                //     |&&e| graph.edges[e].end < params.alloc_params.m, // this predicates returns true iff rff.edges[e] is an edge whose end is in the graph
+                // )
+                .map(|&e| graph.edges[e].capacity())
+                .sum::<i64>() as usize
+        })
+        .collect();
+
+    res
+}
+
+pub fn run_experiment(params: DynamicAllocExperimentParams) -> DynamicExperimentResult {
+    // let mut timings: FlowAllocTimings = Default::default();
+    // let mut connected_components: usize = 0;
+    // let rand_alloc = flow_alloc(params, Some(&mut timings), Some(&mut connected_components));
+    let rand_alloc = dynamic_alloc(params);
+    let size = rand_alloc.iter().sum();
+    let max_load = rand_alloc.iter().fold(0, |max, x| max.max(*x));
+    let load_modes = compute_modes(rand_alloc.into_iter(), max_load);
+    let stash_size = compute_overflow_stat(load_modes.iter(), params.alloc_params.bucket_capacity);
+
+    DynamicExperimentResult {
+        size,
+        max_load,
+        // load_modes,
+        stash_size,
+        // connected_components,
+        // timings,
+    }
+}
+
+pub fn iterated_experiment<F>(
+    params: DynamicAllocExperimentParams,
+    iterations: usize,
+    show_progress: bool,
+    iteration_progress_callback: F,
+) -> Vec<DynamicExperimentResult>
+where
+    F: Fn(usize) + Send + Sync,
+{
+    // println!(
+    // "{} one choice allocation iterations with N={}, m={}, max_len={}",
+    // iterations, n, m, max_len
+    // );
+
+    let elements_pb = ProgressBar::new((iterations * params.alloc_params.n) as u64);
+    if show_progress {
+        elements_pb.set_style(ProgressStyle::default_bar()
+        .template("[{elapsed_precise}] {msg} [{bar:40.cyan/blue}] ({pos}/{len} elts - {percent}%) | ETA: {eta_precise}")
+        .progress_chars("##-"));
+        elements_pb.set_draw_delta(1_000_000);
+    }
+
+    let mut iter_completed = AtomicUsize::new(0);
+
+    if show_progress {
+        elements_pb.set_position(0);
+        elements_pb.set_message(&format!(
+            "{}/{} iterations",
+            *iter_completed.get_mut(),
+            iterations
+        ));
+    }
+
+    let results: Vec<DynamicExperimentResult> = (0..iterations)
+        .into_par_iter()
+        .map(|_| {
+            let r: DynamicExperimentResult = run_experiment(params);
+            if show_progress {
+                elements_pb.inc(params.alloc_params.n as u64);
+            }
+            iteration_progress_callback(params.alloc_params.n);
+
+            let previous_count = iter_completed.fetch_add(1, Ordering::SeqCst);
+            if show_progress {
+                elements_pb.set_message(&format!(
+                    "{}/{} iterations",
+                    previous_count + 1,
+                    iterations
+                ));
+            }
+            r
+        })
+        .collect();
+
+    if show_progress {
+        elements_pb.finish_with_message("Done!");
+    }
+
+    results
 }
