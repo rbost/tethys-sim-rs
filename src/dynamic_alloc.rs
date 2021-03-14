@@ -92,6 +92,10 @@ impl Graph {
     }
 
     fn push_edge_cuckoo(&mut self, edge_index: usize, iteration_depth: usize) {
+        if iteration_depth > 10 {
+            println!("iteration depth {}", iteration_depth);
+        }
+
         let edge = &self.edges[edge_index];
         let cap_start = self.out_edge_capacity(edge.start);
 
@@ -129,6 +133,10 @@ impl Graph {
         let edge = &self.edges[edge_index];
         let cap_start = self.out_edge_capacity(edge.start);
 
+        if iteration_depth > 100 {
+            println!("iteration depth {}", iteration_depth);
+        }
+
         if cap_start > self.max_vertex_capacity as u64 {
             // we need to reverse one outgoing edge of the starting vertex
 
@@ -150,7 +158,7 @@ impl Graph {
             self.reverse_edge(rev_edge_index);
 
             // iterate the eviction
-            self.push_edge_cuckoo(rev_edge_index, iteration_depth + 1);
+            self.push_edge_min_cap_aux(rev_edge_index, iteration_depth + 1);
         }
     }
 
@@ -191,7 +199,7 @@ impl Graph {
         //
         self.push_edge(e_index);
 
-        if cap > 0 {
+        if cap > 1 {
             self.add_edge(label, start, end, cap - 1)
         }
     }
