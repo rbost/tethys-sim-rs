@@ -7,7 +7,7 @@
       "bucket_capacity": 8,
       "generation_method": "WorstCaseGeneration",
       "location_generation": "HalfRandom",
-      "eviction_strategy": "LeastCharged"
+      "eviction_strategy": "LeastChargedFullNonRec"
     },
     "iterations": 100
   },
@@ -19,7 +19,7 @@
       "bucket_capacity": 8,
       "generation_method": "RandomGeneration",
       "location_generation": "FullyRandom",
-      "eviction_strategy": "Cuckoo"
+      "eviction_strategy": "LeastChargedSplitNonRec"
     },
     "iterations": 100
   }
