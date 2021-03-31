@@ -159,34 +159,39 @@ impl Graph {
         // we want to choose the direction that minimizes the vertex load
         let edge = &mut self.edges[edge_index]; // mutable borrow starting from here
 
-        if cap_start >= cap_end {
-            // try to fit everything in the least charged vertex (outgoing) ...
-            let out_cap = rem_cap.min(cap_start);
-            edge.out_capacity = out_cap;
-            rem_cap -= out_cap;
+        if edge.start != edge.end {
+            if cap_start >= cap_end {
+                // try to fit everything in the least charged vertex (outgoing) ...
+                let out_cap = rem_cap.min(cap_start);
+                edge.out_capacity = out_cap;
+                rem_cap -= out_cap;
 
-            // and then in the most charged one (incoming)
-            let in_cap = rem_cap.min(cap_end);
-            edge.in_capacity = in_cap;
-            rem_cap -= in_cap;
+                // and then in the most charged one (incoming)
+                let in_cap = rem_cap.min(cap_end);
+                edge.in_capacity = in_cap;
+                rem_cap -= in_cap;
+            } else {
+                // try to fit everything in the least charged vertex (incoming) ...
+                let in_cap = rem_cap.min(cap_end);
+                edge.in_capacity = in_cap;
+                rem_cap -= in_cap;
+
+                // and then in the most charged one (outgoing)
+                let out_cap = rem_cap.min(cap_start);
+                edge.out_capacity = out_cap;
+                rem_cap -= out_cap;
+            }
         } else {
-            // try to fit everything in the least charged vertex (incoming) ...
-            let in_cap = rem_cap.min(cap_end);
-            edge.in_capacity = in_cap;
-            rem_cap -= in_cap;
-
-            // and then in the most charged one (outgoing)
+            // looping edge
             let out_cap = rem_cap.min(cap_start);
             edge.out_capacity = out_cap;
-            rem_cap -= out_cap;
         }
-
         // self.push_edge_min_cap_aux(edge_index, 0)
     }
 
     fn push_edge_min_cap_split(&mut self, edge_index: usize) {
         let edge = &self.edges[edge_index];
-        assert_ne!(edge.start, edge.end);
+
         let mut load_start = self.vertex_load(edge.start);
         let mut load_end = self.vertex_load(edge.end);
 
@@ -202,74 +207,81 @@ impl Graph {
         // println!("Load start {}", load_start);
         // println!("Load end {}", load_end);
 
-        if load_start > load_end {
-            // need to put some weight at the end
-            let load_diff = load_start - load_end;
-            let assigned_cap = rem_cap.min(load_diff);
+        if edge.start != edge.end {
+            if load_start > load_end {
+                // need to put some weight at the end
+                let load_diff = load_start - load_end;
+                let assigned_cap = rem_cap.min(load_diff);
 
-            // equalize the loads
-            edge.in_capacity = assigned_cap;
-            rem_cap -= assigned_cap;
+                // equalize the loads
+                edge.in_capacity = assigned_cap;
+                rem_cap -= assigned_cap;
 
-            // update the load
-            load_end += assigned_cap;
-        } else if load_end > load_start {
-            // need to put some weight at the start
-            let load_diff = load_end - load_start;
-            let assigned_cap = rem_cap.min(load_diff);
+                // update the load
+                load_end += assigned_cap;
+            } else if load_end > load_start {
+                // need to put some weight at the start
+                let load_diff = load_end - load_start;
+                let assigned_cap = rem_cap.min(load_diff);
 
-            // equalize the loads
-            edge.out_capacity = assigned_cap;
-            rem_cap -= assigned_cap;
+                // equalize the loads
+                edge.out_capacity = assigned_cap;
+                rem_cap -= assigned_cap;
 
-            // update the load
-            load_start += assigned_cap;
+                // update the load
+                load_start += assigned_cap;
+            }
+
+            // println!("Remaining cap 1 {}", rem_cap);
+            // println!("Load start {}", load_start);
+            // println!("Load end {}", load_end);
+            // println!("In cap {}", edge.in_capacity());
+            // println!("Out cap {}", edge.out_capacity());
+            // assert!(load_start <= self.max_vertex_load as u64);
+            // assert!(load_end <= self.max_vertex_load as u64);
+
+            let cap_start = self.max_vertex_load as u64 - load_start;
+            let cap_end = self.max_vertex_load as u64 - load_end;
+
+            if rem_cap > 0 {
+                assert_eq!(cap_start, cap_end);
+            }
+
+            let in_cap = cap_end.min(rem_cap / 2);
+            edge.in_capacity += in_cap;
+
+            rem_cap -= in_cap;
+            load_end += in_cap;
+
+            // println!("Remaining cap 2 {}", rem_cap);
+            // println!("Load start {}", load_start);
+            // println!("Load end {}", load_end);
+            // println!("In cap {}", edge.in_capacity());
+            // println!("Out cap {}", edge.out_capacity());
+
+            let out_cap = cap_start.min(rem_cap);
+            edge.out_capacity += out_cap;
+            rem_cap -= out_cap;
+            load_start += out_cap;
+
+            // println!("Remaining cap 3 {}", rem_cap);
+            // println!("Load start {}", load_start);
+            // println!("Load end {}", load_end);
+            // println!("In cap {}", edge.in_capacity());
+            // println!("Out cap {}", edge.out_capacity());
+
+            assert!(load_start <= self.max_vertex_load as u64);
+            assert!(load_end <= self.max_vertex_load as u64);
+
+            assert!(edge.out_capacity + edge.in_capacity <= edge.total_capacity);
+
+            // self.push_edge_min_cap_aux(edge_index, 0)
+        } else {
+            // looping edge
+            let cap = rem_cap.min(self.max_vertex_load as u64 - load_start);
+
+            edge.out_capacity += cap;
         }
-
-        // println!("Remaining cap 1 {}", rem_cap);
-        // println!("Load start {}", load_start);
-        // println!("Load end {}", load_end);
-        // println!("In cap {}", edge.in_capacity());
-        // println!("Out cap {}", edge.out_capacity());
-        // assert!(load_start <= self.max_vertex_load as u64);
-        // assert!(load_end <= self.max_vertex_load as u64);
-
-        let cap_start = self.max_vertex_load as u64 - load_start;
-        let cap_end = self.max_vertex_load as u64 - load_end;
-
-        if rem_cap > 0 {
-            assert_eq!(cap_start, cap_end);
-        }
-
-        let in_cap = cap_end.min(rem_cap / 2);
-        edge.in_capacity += in_cap;
-
-        rem_cap -= in_cap;
-        load_end += in_cap;
-
-        // println!("Remaining cap 2 {}", rem_cap);
-        // println!("Load start {}", load_start);
-        // println!("Load end {}", load_end);
-        // println!("In cap {}", edge.in_capacity());
-        // println!("Out cap {}", edge.out_capacity());
-
-        let out_cap = cap_start.min(rem_cap);
-        edge.out_capacity += out_cap;
-        rem_cap -= out_cap;
-        load_start += out_cap;
-
-        // println!("Remaining cap 3 {}", rem_cap);
-        // println!("Load start {}", load_start);
-        // println!("Load end {}", load_end);
-        // println!("In cap {}", edge.in_capacity());
-        // println!("Out cap {}", edge.out_capacity());
-
-        assert!(load_start <= self.max_vertex_load as u64);
-        assert!(load_end <= self.max_vertex_load as u64);
-
-        assert!(edge.out_capacity + edge.in_capacity <= edge.total_capacity);
-
-        // self.push_edge_min_cap_aux(edge_index, 0)
     }
     // fn push_edge_min_cap_aux(&mut self, edge_index: usize, iteration_depth: usize) {
     //     let edge = &self.edges[edge_index];
