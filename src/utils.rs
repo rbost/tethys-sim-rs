@@ -5,7 +5,7 @@ use serde::Serialize;
 pub fn msb(x: u64) -> u8 {
     let bits = 64u8;
     if x != 0 {
-        (bits - 1 - (x.leading_zeros() as u8))
+        bits - 1 - (x.leading_zeros() as u8)
     } else {
         0u8
     }
@@ -45,7 +45,8 @@ where
     };
 
     let variance = if count > 0 {
-        ((sum_square as f64) / (count as f64)) - (mean * mean)
+        let mean_square = mean * mean;
+        ((sum_square as f64) / (count as f64)) - mean_square
     } else {
         0.0
     };
