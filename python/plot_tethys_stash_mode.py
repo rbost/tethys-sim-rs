@@ -8,19 +8,16 @@
 # "algorithm"
 
 import argparse
-import matplotlib.pyplot as plt
 import json
-import math
 import csv
 import itertools
 
+import matplotlib.pyplot as plt
 
-def plot_file(filename, label, normalize=False, plot=True, logx=False, logy=False):
+
+def get_plot_rows(filename, label, normalize=False, plot=True, logx=False, logy=False):
     with open(filename) as source:
         data = json.load(source)
-        x = []
-        y_max = []
-        y_avg = []
 
         rows = []
 
@@ -41,7 +38,7 @@ def plot_file(filename, label, normalize=False, plot=True, logx=False, logy=Fals
 
             norm_factor = 1
 
-            if (normalize):
+            if normalize:
                 norm_factor = n
 
             probs = [i/(norm_factor*iterations)
@@ -93,10 +90,10 @@ parser.add_argument('--out', '-o', metavar='path', default=None,
 args = parser.parse_args()
 # print(args)
 
-rows = plot_file(args.filename, args.label, normalize=args.normalize,
-                 logx=args.logx, logy=args.logy,  plot=(not args.no_plot))
+plot_rows = get_plot_rows(args.filename, args.label, normalize=args.normalize,
+                          logx=args.logx, logy=args.logy,  plot=(not args.no_plot))
 transposed_rows = list(
-    map(list, itertools.zip_longest(*rows, fillvalue=0)))
+    map(list, itertools.zip_longest(*plot_rows, fillvalue=0)))
 
 
 if args.out:

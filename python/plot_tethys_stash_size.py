@@ -8,12 +8,13 @@
 # "algorithm"
 
 import argparse
-import matplotlib.pyplot as plt
 import json
 import math
+import csv
+
 from scipy.optimize import curve_fit
 import numpy as np
-import csv
+import matplotlib.pyplot as plt
 
 
 def f(x, a):
@@ -84,10 +85,10 @@ def process(filename, label, normalize=False, plot=True, logx=False, logy=False)
 
         fit_func = f
 
-        if (normalize):
+        if normalize:
             fit_func = f_norm
 
-        popt, pcov = curve_fit(f, x[:-1], y_max[:-1])
+        popt, pcov = curve_fit(fit_func, x[:-1], y_max[:-1])
 
         if plot:
             plt.plot(x, y_max, label="Max stash size")
@@ -100,7 +101,7 @@ def process(filename, label, normalize=False, plot=True, logx=False, logy=False)
 
             fit_label = 'fit: y=a/log(x), a=%5.3f' % tuple(popt)
 
-            if (normalize):
+            if normalize:
                 fit_label = 'fit: y=a/(x log(x)), a=%5.3f' % tuple(popt)
 
             # plt.plot(x, f(x, *popt), 'g--',

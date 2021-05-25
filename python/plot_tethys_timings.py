@@ -8,10 +8,9 @@
 # "algorithm"
 
 import argparse
-import matplotlib.pyplot as plt
 import json
-import math
 
+import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 
 
