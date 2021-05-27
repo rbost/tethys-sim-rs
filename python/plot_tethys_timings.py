@@ -15,10 +15,14 @@ from scipy.optimize import curve_fit
 
 
 def f(x, a, b):
+    """Fitting function"""
     return b*(x**a)
 
 
 def plot_file(filename, label, normalize=False, logx=False, logy=False):
+    """
+    Plot the timings of the allocation algorithm
+    """
     with open(filename) as source:
         data = json.load(source)
         x = []
@@ -56,8 +60,6 @@ def plot_file(filename, label, normalize=False, logx=False, logy=False):
 
         popt, pcov = curve_fit(f, x, y_max, bounds=([1., 0.], [2., 5000.]))
 
-        # plt.plot(x, x_alpha, label="x^alpha")
-        # plt.plot(x, x_square, label="x^2")
         plt.plot(x, f(x, *popt), 'g--',
                  label='fit: y=b*(x^a), a=%5.3f, b=%5.3f' % tuple(popt))
         plt.plot(x, y_max, label="Max max flow time")

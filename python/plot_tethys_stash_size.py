@@ -1,11 +1,12 @@
 #! python3
 
-##
-# Plot the experimental results of the buckets overflows
-# The script takes a mandatory argument: the input file
-# You can also specify the label to use when plotting by using the -l (or
-# --label) option. The acceptable values are "m", "n", "n/m", "max_len" and
-# "algorithm"
+"""
+Plot the experimental results of the buckets overflows
+The script takes a mandatory argument: the input file
+You can also specify the label to use when plotting by using the -l (or
+--label) option. The acceptable values are "m", "n", "n/m", "max_len" and
+"algorithm"
+"""
 
 import argparse
 import json
@@ -18,37 +19,44 @@ import matplotlib.pyplot as plt
 
 
 def f(x, a):
+    """Fitting function"""
     return a/np.log2(x)
 
 
 def f_norm(x, a):
+    """Fitting function (normalized)"""
     return a/(x*np.log2(x))
 
 
-def exp_fit(x):
-    return 72684 / (x*np.log2(x))
-
-
 def process(filename, label, normalize=False, plot=True, logx=False, logy=False):
+    """
+    Plot stash statistics, and return the statistics as a list of rows.
+    The rows' values correspond to the following statistics, in that order:
+    label, average, standard deviation of the average, upper limit of the
+    confidence hull, lower limit of the confidence hull, maximum value
+    """
     with open(filename) as source:
         data = json.load(source)
 
-        confidence_param = 3
-        x = []
-        y_max = []
-        y_avg = []
-        y_std_dev = []
-        y_upper_hull = []
-        y_lower_hull = []
+        confidence_param = 3  # the confidence parameter used to
+        # draw the hull of the stash size
+        x = []  # the index value, corresponding to the label
+        y_max = []  # maximum stash size
+        y_avg = []  # average stash size
+        y_std_dev = []  # standard deviation of the stash size
+        y_upper_hull = []  # the values of the hull's upper limit
+        y_lower_hull = []  # the values of the hull's lower limit
 
         rows = []
 
         for experiment in data:  # iterate over the experiments
+            # get the different parameters of the experiment
             n = float(experiment["parameters"]["exp_params"]["n"])
             m = float(experiment["parameters"]["exp_params"]["m"])
             p = float(experiment["parameters"]
                       ["exp_params"]["bucket_capacity"])
 
+            # compute the label value
             if label == "n/m":
                 l = n / m
             elif label == "epsilon":
@@ -106,9 +114,6 @@ def process(filename, label, normalize=False, plot=True, logx=False, logy=False)
 
             # plt.plot(x, f(x, *popt), 'g--',
                 #  label=fit_label)
-
-            # plt.plot(x, exp_fit(x), 'r--',
-            #  label="expected")
 
             plt.legend(loc='upper right')
 

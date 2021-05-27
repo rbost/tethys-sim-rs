@@ -37,15 +37,19 @@ The file [`max_flow_config.json`](max_flow_config.json
 ) gives an example of such configuration file.
 
 
-## Usage (Python scripts)
+## Usage (Python plotting scripts)
 
-In the `python` directory, you will find two scripts to generate the configuration files used in the experiments (`tethys_config_gen_const_eps.py` and `tethys_config_gen_epsilon.py`).
-You will also find scripts which can process the experiments' JSON output and plot different graphs (stash modes, stash size, allocation timing).
+In the `python` directory, will find scripts which can process the experiments' JSON output and plot different graphs (stash modes, stash size, allocation timing).
 They essentially all have the same usage and options:
 * pass the path of the JSON file to process as the first input
 * `--logx`, `--logy`: use log scale.
 * `--label label` or `-l label`: use `label` as the `x` values. `label` can be `n`, `m`, `n/m`, or `epsilon`.
 * `--normalize` or `-n`: divide the value of interest by `n`.
+* `--out stats.csv` or `-o stats.csv`: output the statistics as as CSV file (put the result in `stats.csv`).
+
+## Usage (configuration generation scripts)
+
+In the `python` directory, you will also find two scripts to generate the configuration files used in the experiments (`tethys_config_gen_const_eps.py` and `tethys_config_gen_epsilon.py`).
 
 ## `fio` configuration file
 

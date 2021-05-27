@@ -1,11 +1,12 @@
 #! python3
 
-##
-# Plot the experimental results of the buckets overflows
-# The script takes a mandatory argument: the input file
-# You can also specify the label to use when plotting by using the -l (or
-# --label) option. The acceptable values are "m", "n", "n/m", "max_len" and
-# "algorithm"
+"""
+Plot the experimental results of the buckets overflows
+The script takes a mandatory argument: the input file
+You can also specify the label to use when plotting by using the -l (or
+--label) option. The acceptable values are "m", "n", "n/m", "max_len" and
+"algorithm"
+"""
 
 import argparse
 import json
@@ -16,6 +17,8 @@ import matplotlib.pyplot as plt
 
 
 def get_plot_rows(filename, label, normalize=False, plot=True, logx=False, logy=False):
+    """Compute the stash mode expectancies, plot them and return them as rows
+    (one row per experiment)."""
     with open(filename) as source:
         data = json.load(source)
 
@@ -29,6 +32,7 @@ def get_plot_rows(filename, label, normalize=False, plot=True, logx=False, logy=
 
             iterations = int(experiment["parameters"]["iterations"])
 
+            # 'Compute' the label
             if label == "n/m":
                 l = n / m
             elif label == "epsilon":
@@ -36,33 +40,28 @@ def get_plot_rows(filename, label, normalize=False, plot=True, logx=False, logy=
             else:
                 l = float(experiment["parameters"]["exp_params"][label])
 
+            # Compute the normalization factor
             norm_factor = 1
 
             if normalize:
                 norm_factor = n
 
+            # Compute the modes as expectancies (or probabilities when using a
+            # normalization factor)
             probs = [i/(norm_factor*iterations)
                      for i in experiment["stash_modes"][0:: p]]
+
+            # Add the probabilites to the graph (labeled by the n variable)
             plt.plot(probs, label="n=%d" % (n))
 
+            # Put the label at the beginning of the row
+            # (this is done for the CSV output)
             probs.insert(0, int(l))
 
             rows.append(probs)
-            # x.append(l)
 
-            # stash_max = float(experiment["stash_size"]["max"])
-            # stash_avg = float(experiment["stash_size"]["mean"])
-
-            # if normalize:
-            # stash_avg /= n
-            # stash_max /= n
-
-            # y_max.append(stash_max)
-            # y_avg.append(stash_avg)
-
+        # Display the plot if requested
         if plot:
-            # plt.plot(x, y_max, label="Max stash size")
-            # plt.plot(x, y_avg, label="Average stash size")
             plt.legend(loc='upper right')
 
             if logx:
@@ -92,11 +91,13 @@ args = parser.parse_args()
 
 plot_rows = get_plot_rows(args.filename, args.label, normalize=args.normalize,
                           logx=args.logx, logy=args.logy,  plot=(not args.no_plot))
-transposed_rows = list(
-    map(list, itertools.zip_longest(*plot_rows, fillvalue=0)))
-
 
 if args.out:
+    # Output the result as a CSV file
+    # In that case, rows need to be turned into columns, all of the same length
+    transposed_rows = list(
+        map(list, itertools.zip_longest(*plot_rows, fillvalue=0)))
+
     with open(args.out, 'w') as out_file:
         writer = csv.writer(out_file)
         writer.writerows(transposed_rows)
