@@ -1,6 +1,7 @@
-# Supplementary Material of "Tethys: Page-Efficient Searchable Symmetric Encryption"
+# Simulation of the TethysDIP algorithm
 
-This archive contains some of the code used for the evaluation of the algorithms in the paper, notably the TethysCore allocation algorithm.
+This is the supplementary material of "SSE and SSD: Page-Efficient Searchable Symmetric Encryption".
+This archive contains some of the code used for the evaluation of the algorithms in the paper, notably the `TethysCore` allocation algorithm.
 
 ## Usage (main code)
 
@@ -53,4 +54,4 @@ In the `python` directory, you will also find two scripts to generate the config
 
 ## `fio` configuration file
 
-`sse_workloads.fio` is the `fio` configuration file we used for the evaluation. To run it on your computer, just call `fio sse_workloads.fio`. Be careful: it will write a 32GB on your disk.
+`sse_workloads.fio` is the [`fio`](https://github.com/axboe/fio) configuration file we used for the evaluation. To run it on your computer, just call `fio sse_workloads.fio`. Be careful: it will write a 32GB on your disk.
