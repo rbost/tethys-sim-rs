@@ -1,6 +1,16 @@
 #! python3
 
 
+"""
+Generate JSON configuration files for the Tethys simulation code.
+This script generates experimental settings with a constant p and epsilon, as
+well as a fixed number of iterations. Other parameters, such as the generation
+method of the list (more precisely the lists' length), the initial orientation
+of the edges in the graph, and the choice of the starting and ending edges, are
+also fixed and can be customized.
+The values for n are given as a list (see other comments in the code).
+"""
+
 import json
 import math
 import copy
@@ -10,8 +20,10 @@ p = 512
 iterations = 6000000
 epsilon = 0.1
 
+# the different values for n
 n_values = [2**22, 2**21, 2**20, 2**19, 2**18, 2**17, 2**16, 2**15]
 
+# values of m computed from the above list and parameters
 n_m_pairs = [(n, math.ceil(n * (2 + epsilon)/p)) for n in n_values]
 
 print("Values for n:")

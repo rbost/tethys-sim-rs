@@ -45,7 +45,8 @@ where
     };
 
     let variance = if count > 0 {
-        ((sum_square as f64) / (count as f64)) - (mean * mean)
+        let mean_square = mean * mean;
+        ((sum_square as f64) / (count as f64)) - mean_square
     } else {
         0.0
     };

@@ -64,7 +64,7 @@ impl Graph {
             vertices.push(v);
         }
         Graph {
-            vertices: vertices,
+            vertices,
             edges: Vec::new(),
             connected_components_count: 0,
         }
@@ -213,8 +213,7 @@ impl Graph {
                     .out_edges
                     .iter()
                     .filter(|&&o_e| o_e == e)
-                    .collect::<Vec<&usize>>()
-                    .len(),
+                    .count(),
                 1,
                 "Invalid number of matching out edges"
             );
@@ -223,8 +222,7 @@ impl Graph {
                     .in_edges
                     .iter()
                     .filter(|&&o_e| o_e == e)
-                    .collect::<Vec<&usize>>()
-                    .len(),
+                    .count(),
                 1,
                 "Invalid number of matching in edges"
             );
@@ -435,14 +433,14 @@ impl Graph {
                 .in_edges
                 .iter()
                 .filter(|e| n_real_edges > **e)
-                .map(|e| *e) // why do we need that ??
+                .copied() // why do we need that ??
                 .collect();
 
             v.out_edges = v
                 .out_edges
                 .iter()
                 .filter(|e| n_real_edges > **e)
-                .map(|e| *e)
+                .copied()
                 .collect();
         }
 
@@ -611,6 +609,7 @@ fn flow_alloc(
     for v in 0..params.m {
         let out_count = graph.out_edge_capacity(v);
 
+        #[allow(clippy::comparison_chain)]
         if out_count > bucket_capacity {
             // this is an overflowing vertex
             // add capacity from the source
