@@ -1,0 +1,26 @@
+[
+  {
+    "exp_params": {
+      "n": 40,
+      "m": 10,
+      "list_max_len": 8,
+      "bucket_capacity": 8,
+      "generation_method": "WorstCaseGeneration",
+      "location_generation": "HalfRandom",
+      "eviction_strategy": "LeastChargedFullNonRec"
+    },
+    "iterations": 100
+  },
+  {
+    "exp_params": {
+      "n": 40,
+      "m": 20,
+      "list_max_len": 8,
+      "bucket_capacity": 8,
+      "generation_method": "RandomGeneration",
+      "location_generation": "FullyRandom",
+      "eviction_strategy": "LeastChargedSplitNonRec"
+    },
+    "iterations": 100
+  }
+]

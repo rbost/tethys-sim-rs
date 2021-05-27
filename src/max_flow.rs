@@ -12,6 +12,7 @@ use std::slice::Iter;
 use indicatif::{ProgressBar, ProgressStyle};
 use serde::{Deserialize, Serialize};
 
+pub use crate::alloc_experiments_types::{AllocExperimentParams, ListGenerationMethod};
 pub use crate::utils::*;
 
 #[derive(Debug, Clone)]
@@ -484,12 +485,6 @@ fn generate_random_graph(n_vertices: usize, n_edges: usize) -> Graph {
     graph
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub enum ListGenerationMethod {
-    RandomGeneration,
-    WorstCaseGeneration,
-}
-
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum EdgeOrientation {
     RandomOrientation,
@@ -504,11 +499,8 @@ pub enum LocationGeneration {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct MaxFlowAllocExperimentParams {
-    pub n: usize,
-    pub m: usize,
-    pub list_max_len: usize,
-    pub bucket_capacity: usize,
-    pub generation_method: ListGenerationMethod,
+    #[serde(flatten)]
+    pub alloc_params: AllocExperimentParams,
     pub edge_orientation: EdgeOrientation,
     pub location_generation: LocationGeneration,
 }
@@ -544,27 +536,28 @@ where
     }
 }
 fn generate_alloc_graph(params: MaxFlowAllocExperimentParams) -> (Graph, u64) {
-    let mut remaining_elements = params.n;
+    let mut remaining_elements = params.alloc_params.n;
 
     let mut rng = thread_rng();
 
     // create a new graph with m+2 vertices: one per bucket + a source and a sink
     // by convention, the source has index m and the sink has index m+1
-    let mut graph = Graph::new_with_vertices(params.m + 2);
+    let mut graph = Graph::new_with_vertices(params.alloc_params.m + 2);
 
     let mut list_index: u64 = 0;
 
     while remaining_elements != 0 {
-        let l: usize = match params.generation_method {
+        let l: usize = match params.alloc_params.generation_method {
             ListGenerationMethod::RandomGeneration => {
-                rng.gen_range(0, params.list_max_len.min(remaining_elements)) + 1
+                rng.gen_range(0, params.alloc_params.list_max_len.min(remaining_elements)) + 1
             }
             ListGenerationMethod::WorstCaseGeneration => {
-                params.list_max_len.min(remaining_elements)
+                params.alloc_params.list_max_len.min(remaining_elements)
             }
         };
 
-        let (h1, h2) = generate_location(&mut rng, params.m, params.location_generation);
+        let (h1, h2) =
+            generate_location(&mut rng, params.alloc_params.m, params.location_generation);
 
         let mut start = h1;
         let mut end = h2;
@@ -604,16 +597,21 @@ fn flow_alloc(
     // ones ending at the sink to 'encode' overflowing and underflowing nodes.
 
     let mut additional_label = 2 * list_count;
-    let bucket_capacity: u64 = params.bucket_capacity as u64;
+    let bucket_capacity: u64 = params.alloc_params.bucket_capacity as u64;
 
-    for v in 0..params.m {
+    for v in 0..params.alloc_params.m {
         let out_count = graph.out_edge_capacity(v);
 
         #[allow(clippy::comparison_chain)]
         if out_count > bucket_capacity {
             // this is an overflowing vertex
             // add capacity from the source
-            graph.add_edge(additional_label, params.m, v, out_count - bucket_capacity);
+            graph.add_edge(
+                additional_label,
+                params.alloc_params.m,
+                v,
+                out_count - bucket_capacity,
+            );
             additional_label += 1;
         } else if out_count < bucket_capacity {
             // this is a vertex with remaining space
@@ -621,7 +619,7 @@ fn flow_alloc(
             graph.add_edge(
                 additional_label,
                 v,
-                params.m + 1,
+                params.alloc_params.m + 1,
                 bucket_capacity - out_count,
             );
             additional_label += 1;
@@ -635,7 +633,7 @@ fn flow_alloc(
 
     let start_connected_components = std::time::Instant::now();
 
-    rff.compute_connected_components(params.m, params.m + 1);
+    rff.compute_connected_components(params.alloc_params.m, params.alloc_params.m + 1);
 
     // It is time to max flow!
     // We could do
@@ -645,7 +643,11 @@ fn flow_alloc(
     // Ford-Fulkerson algorithm. So, we only compute this graph for now
     let start_ff = std::time::Instant::now();
 
-    rff.compute_residual_max_flow(params.m, params.m + 1, TraversalAlgorithm::DepthFirstSearch);
+    rff.compute_residual_max_flow(
+        params.alloc_params.m,
+        params.alloc_params.m + 1,
+        TraversalAlgorithm::DepthFirstSearch,
+    );
 
     let end_ff = std::time::Instant::now();
 
@@ -670,13 +672,13 @@ fn flow_alloc(
     // Now, we can easily compute the load of each bucket.
     // We must be careful to remove the edges whose end are the sink or the
     // source from the load computation
-    let res: Vec<usize> = (0..params.m)
+    let res: Vec<usize> = (0..params.alloc_params.m)
         .map(|v| {
             rff.vertices[v]
                 .out_edges
                 .iter()
                 .filter(
-                    |&&e| rff.edges[e].end < params.m, // this predicates returns true iff rff.edges[e] is an edge whose end is in the graph
+                    |&&e| rff.edges[e].end < params.alloc_params.m, // this predicates returns true iff rff.edges[e] is an edge whose end is in the graph
                 )
                 .map(|&e| rff.edges[e].capacity)
                 .sum::<i64>() as usize
@@ -693,7 +695,7 @@ pub fn run_experiment(params: MaxFlowAllocExperimentParams) -> MaxFlowExperiment
     let size = rand_alloc.iter().sum();
     let max_load = rand_alloc.iter().fold(0, |max, x| max.max(*x));
     let load_modes = compute_modes(rand_alloc.into_iter(), max_load);
-    let stash_size = compute_overflow_stat(load_modes.iter(), params.bucket_capacity);
+    let stash_size = compute_overflow_stat(load_modes.iter(), params.alloc_params.bucket_capacity);
 
     MaxFlowExperimentResult {
         size,
@@ -719,7 +721,7 @@ where
     // iterations, n, m, max_len
     // );
 
-    let elements_pb = ProgressBar::new((iterations * params.n) as u64);
+    let elements_pb = ProgressBar::new((iterations * params.alloc_params.n) as u64);
     if show_progress {
         elements_pb.set_style(ProgressStyle::default_bar()
         .template("[{elapsed_precise}] {msg} [{bar:40.cyan/blue}] ({pos}/{len} elts - {percent}%) | ETA: {eta_precise}")
@@ -743,9 +745,9 @@ where
         .map(|_| {
             let r: MaxFlowExperimentResult = run_experiment(params);
             if show_progress {
-                elements_pb.inc(params.n as u64);
+                elements_pb.inc(params.alloc_params.n as u64);
             }
-            iteration_progress_callback(params.n);
+            iteration_progress_callback(params.alloc_params.n);
 
             let previous_count = iter_completed.fetch_add(1, Ordering::SeqCst);
             if show_progress {

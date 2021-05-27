@@ -1,11 +1,8 @@
-#![allow(dead_code)]
-
 mod alloc_experiments_types;
+mod dynamic_alloc;
 mod utils;
 
 pub use crate::utils::*;
-
-// use gnuplot::*;
 
 extern crate csv;
 extern crate serde_json;
@@ -21,8 +18,6 @@ use std::path::Path;
 
 extern crate structopt;
 use structopt::StructOpt;
-
-mod max_flow;
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -46,34 +41,26 @@ struct CliArgs {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct InteratedMaxFlowAllocExperimentParams {
-    pub exp_params: max_flow::MaxFlowAllocExperimentParams,
+pub struct IteratedDynamicAllocExperimentParams {
+    pub exp_params: dynamic_alloc::DynamicAllocExperimentParams,
     pub iterations: usize,
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct MaxFlowAllocTimingStats {
-    pub generation: crate::utils::Stats,
-    pub sink_source: crate::utils::Stats,
-    pub residual: crate::utils::Stats,
-    pub connected_components: crate::utils::Stats,
-    pub max_flow: crate::utils::Stats,
-}
-#[derive(Debug, Clone, Serialize)]
-pub struct MaxFlowAllocStats {
-    pub parameters: InteratedMaxFlowAllocExperimentParams,
+pub struct DynamicAllocStats {
+    pub parameters: IteratedDynamicAllocExperimentParams,
     pub size: crate::utils::Stats,
     pub load: crate::utils::Stats,
     pub stash_size: crate::utils::Stats,
     // pub load_modes: Vec<crate::utils::ModeStats>,
-    pub stash_modes: Vec<usize>,
-    pub connected_components: crate::utils::Stats,
-    pub timings: MaxFlowAllocTimingStats,
+    // pub stash_modes: Vec<usize>,
+    // pub connected_components: crate::utils::Stats,
+    // pub timings: MaxFlowAllocTimingStats,
 }
 
 fn read_config_file<P: AsRef<Path>>(
     path: P,
-) -> io::Result<Vec<InteratedMaxFlowAllocExperimentParams>> {
+) -> io::Result<Vec<IteratedDynamicAllocExperimentParams>> {
     let file = File::open(path)?;
     let reader = BufReader::new(file);
 
@@ -92,16 +79,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let stats = run_experiments_stats(&inputs);
 
-    // write_load_stats_csv(&stats, args.output_path.with_extension("load.csv"))?;
-    // write_size_stats_csv(&stats, args.output_path.with_extension("size.csv"))?;
     write_stats_json(&stats, args.output_path.with_extension("json"))?;
 
     Ok(())
 }
 
 fn run_experiments_stats(
-    inputs: &[InteratedMaxFlowAllocExperimentParams],
-) -> Vec<MaxFlowAllocStats> {
+    inputs: &[IteratedDynamicAllocExperimentParams],
+) -> Vec<DynamicAllocStats> {
     let tot_iterations: usize = inputs.iter().map(|p| p.iterations).sum();
     let tot_elements: usize = inputs
         .iter()
@@ -133,7 +118,7 @@ fn run_experiments_stats(
         .map(|p| {
             (
                 p,
-                max_flow::iterated_experiment(
+                dynamic_alloc::iterated_experiment(
                     p.exp_params,
                     p.iterations,
                     false,
@@ -144,7 +129,7 @@ fn run_experiments_stats(
         .map(|(p, results)| {
             let load_stat = compute_stats(results.iter().map(|x| x.max_load));
             let stash_stat = compute_stats(results.iter().map(|x| x.stash_size));
-            MaxFlowAllocStats {
+            DynamicAllocStats {
                 parameters: *p,
                 size: compute_stats(results.iter().map(|x| x.size)),
                 load: load_stat,
@@ -153,21 +138,21 @@ fn run_experiments_stats(
                 // results.iter().map(|x| &x.load_modes),
                 // load_stat.max.try_into().unwrap(),
                 // ),
-                stash_modes: compute_modes(
-                    results.iter().map(|x| x.stash_size),
-                    stash_stat.max.try_into().unwrap(),
-                ),
-                connected_components: compute_stats(results.iter().map(|x| x.connected_components)),
-                timings: MaxFlowAllocTimingStats {
-                    generation: compute_stats_u128(results.iter().map(|x| x.timings.generation)),
-                    sink_source: compute_stats_u128(results.iter().map(|x| x.timings.sink_source)),
-                    residual: compute_stats_u128(results.iter().map(|x| x.timings.residual)),
-                    connected_components: compute_stats_u128(
-                        results.iter().map(|x| x.timings.connected_components),
-                    ),
+                // stash_modes: compute_modes(
+                // results.iter().map(|x| x.stash_size),
+                // stash_stat.max.try_into().unwrap(),
+                // ),
+                // connected_components: compute_stats(results.iter().map(|x| x.connected_components)),
+                // timings: MaxFlowAllocTimingStats {
+                //     generation: compute_stats_u128(results.iter().map(|x| x.timings.generation)),
+                //     sink_source: compute_stats_u128(results.iter().map(|x| x.timings.sink_source)),
+                //     residual: compute_stats_u128(results.iter().map(|x| x.timings.residual)),
+                //     connected_components: compute_stats_u128(
+                //         results.iter().map(|x| x.timings.connected_components),
+                //     ),
 
-                    max_flow: compute_stats_u128(results.iter().map(|x| x.timings.max_flow)),
-                },
+                //     max_flow: compute_stats_u128(results.iter().map(|x| x.timings.max_flow)),
+                // },
             }
         })
         .collect();
@@ -176,7 +161,7 @@ fn run_experiments_stats(
     results
 }
 
-fn write_stats_json<P: AsRef<Path>>(stats: &[MaxFlowAllocStats], path: P) -> io::Result<()> {
+fn write_stats_json<P: AsRef<Path>>(stats: &[DynamicAllocStats], path: P) -> io::Result<()> {
     let f_json = File::create(path)?;
     serde_json::to_writer_pretty(&f_json, &stats)?;
     Ok(())

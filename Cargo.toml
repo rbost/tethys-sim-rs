@@ -8,6 +8,11 @@ name = "tethys_core_allocation"
 path = "src/main.rs"
 
 
+[[bin]]
+name = "tethys_dyn_allocation"
+path = "src/dyn_runner.rs"
+
+
 
 [dependencies]
 rand = "^0.7.0"
