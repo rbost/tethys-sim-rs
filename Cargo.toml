@@ -1,7 +1,9 @@
 [package]
 name = "tethys-sim-rs"
 version = "0.1.0"
+authors = ["Raphael Bost <raphael_bost@alumni.brown.edu>"]
 edition = "2018"
+license = "MIT"
 
 [[bin]]
 name = "tethys_core_allocation"

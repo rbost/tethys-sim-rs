@@ -1,11 +1,18 @@
-# Simulation of the TethysDIP algorithm
+# Dataless simulation of the TethysDIP algorithm
 
-This is the supplementary material of "SSE and SSD: Page-Efficient Searchable Symmetric Encryption".
-This archive contains some of the code used for the evaluation of the algorithms in the paper, notably the `TethysCore` allocation algorithm.
+[![Build Status](https://img.shields.io/github/workflow/status/rbost/tethys-sim-rs/Rust)](https://github.com/rbost/tethys-sim-rs/actions/workflows/rust.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Usage (main code)
 
-You will need a functional rust installation. See the [Rust's documentation](<https://www.rust-lang.org/tools/install>) for details on how to install.
+
+This is the supplementary material of _SSE and SSD: Page-Efficient Searchable Symmetric Encryption_ by [Bossuat](https://people.irisa.fr/Angele.Bossuat/), [Bost](https://raphael.bost.fyi/), [Fouque](https://www.di.ens.fr/~fouque/), [Minaud](https://www.di.ens.fr/~bminaud) and Reichle published at [Crypto 2021](https://crypto.iacr.org/2021/).
+This archive contains some of the code used for the evaluation of the algorithms in the paper, notably the _TethysCore_ allocation algorithm.
+
+This implementation of TethysCore is dataless because it does not use data to run: it is just a simulation to evaluate the distribution of the stash size and the asymptotical running time of the algorithm.
+
+## Build & Use
+
+You will need a functional rust installation to build the code. See the [Rust's documentation](<https://www.rust-lang.org/tools/install>) for details on how to install.
 
 To compile (in dev mode):
 ```
@@ -38,7 +45,7 @@ The file [`max_flow_config.json`](max_flow_config.json
 ) gives an example of such configuration file.
 
 
-## Usage (Python plotting scripts)
+## Python plotting scripts
 
 In the `python` directory, will find scripts which can process the experiments' JSON output and plot different graphs (stash modes, stash size, allocation timing).
 They essentially all have the same usage and options:
@@ -48,7 +55,7 @@ They essentially all have the same usage and options:
 * `--normalize` or `-n`: divide the value of interest by `n`.
 * `--out stats.csv` or `-o stats.csv`: output the statistics as as CSV file (put the result in `stats.csv`).
 
-## Usage (configuration generation scripts)
+## Configuration generation scripts
 
 In the `python` directory, you will also find two scripts to generate the configuration files used in the experiments (`tethys_config_gen_const_eps.py` and `tethys_config_gen_epsilon.py`).
 
