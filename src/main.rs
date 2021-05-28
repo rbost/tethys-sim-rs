@@ -3,8 +3,6 @@
 mod utils;
 pub use crate::utils::*;
 
-// use gnuplot::*;
-
 extern crate csv;
 extern crate serde_json;
 use serde::{Deserialize, Serialize};
@@ -39,8 +37,6 @@ struct CliArgs {
     )]
     /// Path for the output statistics of the experiments. A JSON and two CSV files (one for the load, the other for the space) will be generated
     output_path: std::path::PathBuf,
-    #[structopt(short = "g", long = "gnuplot")]
-    gnuplot: bool,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
